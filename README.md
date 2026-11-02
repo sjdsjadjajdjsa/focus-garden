@@ -131,8 +131,8 @@ omarchy-shell garden plantSpecies fern    # start over with a species: daisy tul
 
 ## Also by cj
 
-[**Nyx**](https://github.com/sjdsjadjajdjsa/nyx), a little AI buddy that
-lives in the other corner of your Omarchy desktop.
+- [**Nyx**](https://github.com/sjdsjadjajdjsa/nyx), a little AI buddy that lives in the other corner of your Omarchy desktop
+- [**Livewall**](https://github.com/sjdsjadjajdjsa/livewall), any video as your Omarchy wallpaper, from the bar
 
 ## License
 

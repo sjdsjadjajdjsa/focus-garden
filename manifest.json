@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "cj.focus-garden",
   "name": "Focus Garden",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "cj",
   "description": "A focus timer that grows a little plant in the corner of your desktop, and asks for breaks.",
   "kinds": ["panel"],

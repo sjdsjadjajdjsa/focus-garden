@@ -17,7 +17,7 @@
 <br>
 
 <img src="docs/images/timelapse.webp" height="400" alt="Time-lapse: a sunflower grows in its pot from a seed to a bloom while a little sun crosses the sky over it three times, then sparkles"> &nbsp;&nbsp;
-<img src="docs/images/hero.webp" height="400" alt="Focus Garden's card above the plant: a 14:59 focus countdown, growth and water bars, today's stats (1h 40m focused, 4 sessions, 3 breaks) and a shelf of three small potted plants">
+<img src="docs/images/hero.webp" height="400" alt="Focus Garden's card above the plant: a sunflower in a glass terrarium with a sun crossing the sky, a 14:59 focus countdown, a growth vine and a water tube, today's stats, a week of seedlings and a shelf of three small potted plants">
 
 </div>
 
@@ -38,19 +38,23 @@ sounds, no accounts. Just a plant that's doing better when you are.
   <img src="docs/images/break.webp" width="320" alt="A daisy in a pot with a steaming coffee cup beside it, and a bubble saying: 25m of focus done! Break time: stand up and stretch your arms over your head">
 </div>
 
-- **Focus sessions:** click the plant and start 25 or 50 minutes. The sun
-  rises on the left and sets on the right when you're done, so a glance tells
-  you how far along you are. Your plant grows **twice as fast** while you
-  focus.
+- **A terrarium in the card:** click the plant and it's there under glass,
+  on a little grassy hill, under a sky that follows the time of day: dawn,
+  blue day, golden hour, dusk, and a starry night with fireflies.
+- **Focus sessions:** start 25, 50 or 90 minutes. A sun rises on the left of
+  the glass and sets on the right when you're done, so a glance tells you
+  how far along you are. Your plant grows **twice as fast** while you focus.
 - **Breaks that mean something:** when a session ends, you get a small, real
   idea for your break: stretch, rest your eyes, refill your water, breathe.
-  A steaming ☕ waits by the pot until you step away.
+  A steaming cup of coffee waits by the pot until you step away.
 - **A plant that needs you to rest:** water drains over about 2.5 hours of
   nonstop work. Your plant droops and fades a little, asks for a break once,
   and gets a drink (with falling water drops) whenever you're away for 5
   minutes.
-- **Your day at a glance:** focus time, sessions, breaks, screen time and
-  your longest stretch without a break.
+- **Your day and your week:** focus time, sessions and breaks for today,
+  and the last seven days as a row of seedlings, taller the more you
+  focused (an hour or more gets a flower). Hover the plant for screen time
+  and your longest stretch without a break.
 - **Six species to collect:** daisy, tulip, fern, sunflower, cactus and
   bonsai. Each one grows from seed to bloom over a week or two of normal use,
   drawn in code so it grows smoothly and no two look exactly alike. When one
@@ -61,6 +65,8 @@ sounds, no accounts. Just a plant that's doing better when you are.
   keyboard focus.
 
 <div align="center">
+<img src="docs/images/skies.webp" width="100%" alt="The terrarium at three times of day: a blue afternoon sky with a cloud, a pink golden hour, and a starry night with a crescent moon and fireflies">
+<br>
 <img src="docs/images/species.webp" width="100%" alt="Six potted plants in bloom: daisy, tulip, fern, sunflower, cactus and bonsai">
 <br>
 <img src="docs/images/stages.webp" width="100%" alt="A tulip growing from a seed to a sprout, a young plant, a bud, and a pink flower">
@@ -122,10 +128,12 @@ omarchy-shell garden info                 # how the plant is doing
 omarchy-shell garden focus 25             # start a session (1 to 180 minutes)
 omarchy-shell garden stop
 omarchy-shell garden plantSpecies fern    # start over with a species: daisy tulip fern sunflower cactus bonsai
+omarchy-shell garden sky 21.5             # preview the terrarium's sky at 9:30 PM (`sky now` to go back)
 ```
 
-- **`Garden.qml`** is the whole plugin: growing, watering, focus sessions and
-  the card.
+- **`Garden.qml`** is the heart of the plugin: growing, watering, focus
+  sessions and the card. The card's pieces have their own files:
+  `Terrarium.qml`, `VineMeter.qml`, `WaterMeter.qml`, `WeekStrip.qml`.
 - **`Species.js`** draws the plants. Each species is one small function, so
   adding your own is a good afternoon project.
 
@@ -136,4 +144,5 @@ omarchy-shell garden plantSpecies fern    # start over with a species: daisy tul
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). The icons in `Icon.qml` are from [Lucide](https://lucide.dev)
+(ISC license, © Lucide Contributors).

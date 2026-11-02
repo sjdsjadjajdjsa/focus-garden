@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.2.0
+
+A new card.
+
+- A terrarium at the top: your plant under glass, on a little grassy hill,
+  under a sky that follows the time of day (dawn, blue day, golden hour,
+  dusk, and a starry night with fireflies). During a focus session the sun
+  crosses the glass as the minutes go by.
+- Growth is a vine that sprouts leaves as it grows; water is a glass tube
+  with a rippling surface that turns amber when your plant is parched.
+- Start 25, 50 or 90 minutes from the card. Break time is a compact box
+  with a Skip button, and a fully grown plant gets a "Plant a new seed"
+  button.
+- This week: seven seedlings, one per day, taller the more you focused. A
+  day with an hour or more of focus gets a flower. (Days are kept for two
+  weeks, starting from this version.)
+- Line icons everywhere instead of emoji, one button height, a solid panel
+  tinted by your theme, and a wooden shelf with some depth.
+- Hovering the plant shows its status as icon rows, including screen time
+  and your longest stretch.
+- Short screens get a shorter terrarium so the whole card fits.
+- `omarchy-shell garden sky <hour>` previews the sky at any hour.
+
 ## 0.1.0
 
 First release.

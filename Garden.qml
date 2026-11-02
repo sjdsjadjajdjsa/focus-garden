@@ -13,14 +13,15 @@ import qs.Commons as Commons
 // Focus Garden: a little plant in the corner that grows while you work, twice
 // as fast during focus sessions, and gets thirsty if you never take a break.
 //
-//  - Click the pot to start a focus session (25 or 50 minutes); a ring fills
-//    around the plant, and when it's done you get a break with a small idea
+//  - Click the pot for the card: a terrarium with your plant under a sky that
+//    follows the time of day. Start a focus session (25, 50 or 90 minutes) and
+//    a sun crosses the sky; when it's done you get a break with a small idea
 //    for what to do with it.
 //  - Every active minute grows it (thirsty: half speed, parched: not at all).
 //  - Water drains over ~2.5 hours of nonstop use and refills while you're
 //    away; 5 minutes away is a full drink and counts as a break.
-//  - The card shows today's focus time, sessions, breaks and screen time, and
-//    the shelf of plants you've grown.
+//  - The card shows today's focus time, sessions and breaks, your week as a
+//    row of seedlings, and the shelf of plants you've grown.
 // No network and no commands except creating its own state folder.
 Item {
   id: root
@@ -37,7 +38,7 @@ Item {
   readonly property int plantH: 124
   readonly property int ss: 3                 // drawn at 3x for crisp edges on scaled screens
   readonly property int edge: 10
-  readonly property int cardW: 264
+  readonly property int cardW: 296
 
   // ----------------------------------------------------------------- state
   readonly property string stateDir: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/focus-garden"
@@ -66,6 +67,9 @@ Item {
   property int todaySessions: 0
   property real totalFocus: 0
   property double now: Date.now()             // ticks every second while focusing
+  property double clock: Date.now()           // ticks every minute: the terrarium's sky
+  property real previewHour: -1               // `garden sky <hour>` for screenshots
+  property var history: ({})                  // { "yyyy-MM-dd": focus minutes }, the last two weeks
   readonly property bool focusing: focusEndsAt > 0
   readonly property real focusProgress: focusing ? Math.max(0, Math.min(1, (now - focusStartedAt) / Math.max(1, focusEndsAt - focusStartedAt))) : 0
   readonly property string focusLeft: {
@@ -120,7 +124,7 @@ Item {
     save()
     repaint()
   }
-  function repaint() { plantCanvas.requestPaint() }
+  function repaint() { plantCanvas.requestPaint(); terrarium.repaint() }
 
   // ------------------------------------------------------------ saving
   FileView {
@@ -151,6 +155,7 @@ Item {
         root.todaySessions = Number(t.sessions) || 0
       }
       root.totalFocus = Number(s.totalFocus) || 0
+      root.history = s.history && typeof s.history === "object" && !Array.isArray(s.history) ? s.history : ({})
       root.breakDue = s.breakDue === true
       root.breakTip = String(s.breakTip || "")
       if (Number(s.focusEndsAt) > 0) {        // a session survives a shell restart
@@ -173,7 +178,15 @@ Item {
   }
   // The folder is created (harmless if it exists) right before each write.
   Process { id: mkdir; command: ["mkdir", "-p", root.stateDir]; onExited: root.writeState() }
-  function save() { if (loaded) saveTimer.restart() }
+  function save() { if (loaded) { recordDay(); saveTimer.restart() } }
+  // Keep each day's focus minutes for the week strip (two weeks, nothing older).
+  function recordDay() {
+    if (statsDay === "") return
+    var h = {}, cutoff = Qt.formatDate(new Date(Date.now() - 14 * 86400000), "yyyy-MM-dd")
+    for (var k in history) if (k >= cutoff && /^\d{4}-\d\d-\d\d$/.test(k)) h[k] = Math.max(0, Math.round(Number(history[k]) || 0))
+    if (todayFocus > 0 || h[statsDay] !== undefined) h[statsDay] = todayFocus
+    history = h
+  }
   Timer { id: saveTimer; interval: 300; onTriggered: if (!mkdir.running) mkdir.running = true }
   function writeState() {
     stateFile.setText(JSON.stringify({
@@ -183,6 +196,7 @@ Item {
       today: { day: root.statsDay, active: root.todayActive, breaks: root.todayBreaks,
                longest: root.longestStretch, stretch: root.stretch, focus: root.todayFocus,
                sessions: root.todaySessions },
+      history: root.history,
       totalFocus: Math.round(root.totalFocus), focusStartedAt: root.focusStartedAt, focusEndsAt: root.focusEndsAt,
       breakDue: root.breakDue, breakTip: root.breakTip,
       savedAt: Date.now()
@@ -217,6 +231,7 @@ Item {
   }
   function newDay() {
     if (statsDay === today()) return
+    recordDay()
     statsDay = today()
     todayActive = 0; todayBreaks = 0; longestStretch = 0; stretch = 0
     todayFocus = 0; todaySessions = 0
@@ -233,7 +248,7 @@ Item {
     focusEndsAt = now + minutes * 60000
     breakDue = false
     cardOpen = false
-    showTip("🎯 Focusing for " + minutes + " minutes. I'll grow while you work.", 5000)
+    showTip("Focusing for " + minutes + " minutes. I'll grow while you work.", 5000)
     save()
   }
   function stopFocus() {
@@ -272,7 +287,7 @@ Item {
     interval: 60000
     running: root.loaded
     repeat: true
-    onTriggered: root.tick(idle.isIdle)
+    onTriggered: { root.clock = Date.now(); root.tick(idle.isIdle) }
   }
   function tick(away) {
     newDay()
@@ -341,13 +356,27 @@ Item {
 
   // ----------------------------------------------------- popover state
   property string tip: ""
+  // Hovering the plant shows its status as icon rows rather than a message.
+  readonly property string statusTip: "\u0001status"
+  readonly property var statusRows: {
+    var rows = []
+    if (focusing) rows.push({ icon: "timer", text: "Focusing · " + focusLeft + " left", tint: accent })
+    else if (breakDue) rows.push({ icon: "coffee", text: "Break time: " + breakTip, tint: mix("#e9c9a6", accent, 0.2) })
+    rows.push({ icon: "sprout", text: info.name + " · day " + dayNum() + " · " + (bloomed ? "in bloom!" : Math.floor(progress * 100) + "% grown"), tint: mix(pal.leaf, "#ffffff", 0.15) })
+    rows.push({ icon: "droplet", text: thirst, tint: water < 20 ? "#e0b070" : "#7cc2f2" })
+    rows.push({ icon: "eye", text: hm(todayActive) + " on screen · longest stretch " + hm(longestStretch), tint: alpha(Commons.Color.popups.text, 0.6) })
+    return rows
+  }
   function showTip(text, ms) { tip = text; tipTimer.interval = ms || 4000; tipTimer.restart() }
   Timer { id: tipTimer; onTriggered: if (!plantMouse.containsMouse) root.tip = "" }
   property bool cardOpen: false
+  onCardOpenChanged: if (cardOpen) clock = Date.now()
 
   // Stay out of the way in fullscreen apps on this monitor.
   readonly property var mon: Hyprland.monitorFor(win.screen)
   readonly property bool hidden: !!(mon && mon.activeWorkspace && mon.activeWorkspace.hasFullscreen)
+  // Short screens get a shorter terrarium so the whole card fits.
+  readonly property bool compact: !!(win.screen && win.screen.height < 820)
 
   // ------------------------------------------------------------ window
   PanelWindow {
@@ -356,7 +385,7 @@ Item {
     anchors { bottom: true; left: true }
     margins { bottom: 0; left: 0 }
     implicitWidth: root.cardW + 40
-    implicitHeight: 620
+    implicitHeight: Math.min(790, (screen ? screen.height : 900) - 30)
     color: "transparent"
     surfaceFormat.opaque: false
     exclusionMode: ExclusionMode.Ignore
@@ -432,11 +461,10 @@ Item {
           }
         }
         // a cup of coffee beside the pot when a break is due
-        Text {
+        Item {
           id: cup
-          textFormat: Text.PlainText
-          text: "☕"
-          font.pixelSize: 15
+          width: 16; height: 16
+          Icon { anchors.fill: parent; name: "coffee"; size: 16; stroke: 2.2; color: root.mix("#e9c9a6", root.accent, 0.2) }
           x: parent.width - 14
           y: parent.height - 30
           z: 2
@@ -454,7 +482,7 @@ Item {
             Rectangle {
               required property int index
               width: 2; height: 6; radius: 1
-              x: 5 + index * 4
+              x: 4 + index * 4
               color: root.alpha(Commons.Color.popups.text, 0.35)
               SequentialAnimation on y {
                 running: cup.visible
@@ -512,10 +540,7 @@ Item {
           anchors.rightMargin: 18
           hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
-          onEntered: if (!root.cardOpen) root.showTip(
-                       (root.focusing ? "🎯 Focusing · " + root.focusLeft + " left\n" : root.breakDue ? "☕ Break time: " + root.breakTip + "\n" : "")
-                       + root.info.emoji + "  " + root.info.name + " · day " + root.dayNum() + " · "
-                       + (root.bloomed ? "in bloom!" : Math.floor(root.progress * 100) + "% grown") + "\n💧 " + root.thirst, 600000)
+          onEntered: if (!root.cardOpen) root.showTip(root.statusTip, 600000)
           onExited: tipTimer.restart()
           onClicked: { root.cardOpen = !root.cardOpen; root.tip = "" }
         }
@@ -557,12 +582,37 @@ Item {
         x: root.edge + 6
         anchors.bottom: pot.top
         anchors.bottomMargin: 2
-        width: Math.min(240, tipText.implicitWidth + 24)
-        height: tipText.implicitHeight + 16
+        readonly property bool status: root.tip === root.statusTip
+        width: status ? Math.min(260, statusCol.implicitWidth + 24) : Math.min(240, tipText.implicitWidth + 24)
+        height: (status ? statusCol.implicitHeight : tipText.implicitHeight) + 18
+        Column {
+          id: statusCol
+          visible: tipBox.status
+          x: 12; y: 9
+          spacing: 6
+          Repeater {
+            model: tipBox.status ? root.statusRows : []
+            Row {
+              required property var modelData
+              spacing: 8
+              Icon { anchors.verticalCenter: parent.verticalCenter; name: modelData.icon; size: 13; color: modelData.tint }
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                textFormat: Text.PlainText
+                width: Math.min(implicitWidth, 215)
+                elide: Text.ElideRight
+                text: modelData.text
+                color: Commons.Color.popups.text
+                font.family: Style.font.family; font.pixelSize: 11
+              }
+            }
+          }
+        }
         Text {
           id: tipText
+          visible: !tipBox.status
           textFormat: Text.PlainText
-          x: 12; y: 8
+          x: 12; y: 9
           width: Math.min(216, implicitWidth)
           wrapMode: Text.Wrap
           lineHeight: 1.15
@@ -573,7 +623,7 @@ Item {
         }
       }
 
-      // ---- the card: growth, water, today, and the shelf
+      // ---- the card: a terrarium, focus, growth, water, this week, the shelf
       Popover {
         id: card
         shown: root.cardOpen
@@ -581,185 +631,239 @@ Item {
         anchors.bottom: pot.top
         anchors.bottomMargin: 2
         width: root.cardW
-        height: cardCol.implicitHeight + 28
+        height: cardCol.implicitHeight + 24
 
         Column {
           id: cardCol
-          x: 14; y: 14
-          width: parent.width - 28
+          x: 12; y: 12
+          width: parent.width - 24
           spacing: 10
 
-          Item {                                    // name + stage badge
-            width: parent.width
-            height: 22
-            Text {
-              textFormat: Text.PlainText
-              anchors.verticalCenter: parent.verticalCenter
-              text: root.info.emoji + "  " + root.info.name
-              color: Commons.Color.popups.text
-              font.family: Style.font.family; font.pixelSize: 15; font.bold: true
-            }
-            Rectangle {
-              anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-              width: stageText.implicitWidth + 16; height: 20; radius: 10
-              color: root.alpha(root.accent, root.bloomed ? 0.9 : 0.16)
-              Text {
-                id: stageText
-                textFormat: Text.PlainText
-                anchors.centerIn: parent
-                text: root.stage
-                color: root.bloomed ? Commons.Color.background : root.accent
-                font.family: Style.font.family; font.pixelSize: 10; font.bold: true
-              }
-            }
-          }
-          Text {
-            textFormat: Text.PlainText
-            topPadding: -6
-            text: "Day " + root.dayNum() + " · planted " + Qt.formatDate(new Date(root.plantedOn + "T00:00:00"), "MMM d")
-            color: root.alpha(Commons.Color.popups.text, 0.5)
-            font.family: Style.font.family; font.pixelSize: 11
-          }
+          Terrarium { id: terrarium; g: root; width: parent.width; live: card.visible; height: root.compact ? 144 : 172 }
 
-          // focus: start, countdown, or break time
-          Rectangle {
+          // focus: start one, the countdown, or break time
+          Item {
             width: parent.width
-            height: focusCol.implicitHeight + 20
-            radius: 10
-            color: root.alpha(root.accent, root.focusing ? 0.14 : 0.07)
-            border.width: 1
-            border.color: root.alpha(root.accent, root.focusing ? 0.4 : 0.18)
-            Column {
-              id: focusCol
-              x: 12; y: 10
-              width: parent.width - 24
-              spacing: 8
+            height: root.focusing ? focusingRow.height : root.breakDue ? breakBox.height : idleCol.height
+
+            Item {                                   // counting down
+              id: focusingRow
+              visible: root.focusing
+              width: parent.width
+              height: 44
               Text {
+                id: bigTime
+                anchors.verticalCenter: parent.verticalCenter
                 textFormat: Text.PlainText
-                text: root.focusing ? root.focusLeft : root.breakDue ? "Break time ☕" : "Focus"
-                color: root.focusing ? root.accent : Commons.Color.popups.text
-                font.family: Style.font.family; font.pixelSize: root.focusing ? 24 : 13; font.bold: true
+                text: root.focusLeft
+                color: root.accent
+                font.family: Style.font.family; font.pixelSize: 30; font.bold: true
+                font.features: { "tnum": 1 }
               }
-              Text {
-                textFormat: Text.PlainText
+              Column {
+                anchors { left: bigTime.right; leftMargin: 10; verticalCenter: parent.verticalCenter }
+                spacing: 1
+                Text {
+                  textFormat: Text.PlainText
+                  text: "left to focus"
+                  color: root.alpha(Commons.Color.popups.text, 0.75)
+                  font.family: Style.font.family; font.pixelSize: 11; font.bold: true
+                }
+                Text {
+                  textFormat: Text.PlainText
+                  text: "2× growth"
+                  color: root.alpha(Commons.Color.popups.text, 0.45)
+                  font.family: Style.font.family; font.pixelSize: 10
+                }
+              }
+              Pill {
+                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                icon: "stop"; label: "Stop"
+                onClicked: root.stopFocus()
+              }
+            }
+
+            Rectangle {                              // break time
+              id: breakBox
+              visible: !root.focusing && root.breakDue
+              width: parent.width
+              height: breakCol.implicitHeight + 20
+              radius: 12
+              color: root.alpha(root.mix("#e9c9a6", root.accent, 0.25), 0.09)
+              border.width: 1
+              border.color: root.alpha(root.mix("#e9c9a6", root.accent, 0.25), 0.25)
+              Column {
+                id: breakCol
+                x: 12; y: 10
+                width: parent.width - 24
+                spacing: 6
+                Item {
+                  width: parent.width
+                  height: 28
+                  Row {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 7
+                    Icon { anchors.verticalCenter: parent.verticalCenter; name: "coffee"; size: 14; color: root.mix("#e9c9a6", root.accent, 0.2) }
+                    Text {
+                      anchors.verticalCenter: parent.verticalCenter
+                      textFormat: Text.PlainText
+                      text: "Break time"
+                      color: Commons.Color.popups.text
+                      font.family: Style.font.family; font.pixelSize: 13; font.bold: true
+                    }
+                  }
+                  Pill {
+                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                    icon: "skip"; label: "Skip"
+                    onClicked: root.skipBreak()
+                  }
+                }
+                Text {
+                  textFormat: Text.PlainText
+                  width: parent.width
+                  wrapMode: Text.Wrap
+                  lineHeight: 1.1
+                  text: root.breakTip + " 5 minutes away waters your plant."
+                  color: root.alpha(Commons.Color.popups.text, 0.65)
+                  font.family: Style.font.family; font.pixelSize: 11
+                }
+              }
+            }
+
+            Column {                                 // ready to start
+              id: idleCol
+              visible: !root.focusing && !root.breakDue
+              width: parent.width
+              spacing: 8
+              Item {
                 width: parent.width
-                wrapMode: Text.Wrap
-                lineHeight: 1.15
-                text: root.focusing ? "left in this session. Your plant grows twice as fast while you focus."
-                      : root.breakDue ? root.breakTip + " Step away for 5 minutes and your plant gets a drink."
-                      : "Start a session and your plant grows twice as fast while you work."
-                color: root.alpha(Commons.Color.popups.text, 0.6)
-                font.family: Style.font.family; font.pixelSize: 11
+                height: 16
+                Text {
+                  anchors.verticalCenter: parent.verticalCenter
+                  textFormat: Text.PlainText
+                  text: root.bloomed ? "Fully grown!" : "Start a focus session"
+                  color: root.alpha(Commons.Color.popups.text, 0.85)
+                  font.family: Style.font.family; font.pixelSize: 11; font.bold: true
+                }
+                Text {
+                  anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                  textFormat: Text.PlainText
+                  text: root.bloomed ? "it's going on your shelf" : "your plant grows 2×"
+                  color: root.alpha(Commons.Color.popups.text, 0.45)
+                  font.family: Style.font.family; font.pixelSize: 10
+                }
               }
               Row {
                 spacing: 6
-                Pill { visible: !root.focusing; label: "Focus 25"; primary: true; onClicked: root.startFocus(25) }
-                Pill { visible: !root.focusing; label: "50"; onClicked: root.startFocus(50) }
-                Pill { visible: root.focusing; label: "Stop"; onClicked: root.stopFocus() }
-                Pill { visible: root.breakDue && !root.focusing; label: "Skip break"; onClicked: root.skipBreak() }
+                visible: !root.bloomed
+                Pill { icon: "play"; label: "25 min"; primary: true; onClicked: root.startFocus(25) }
+                Pill { label: "50 min"; onClicked: root.startFocus(50) }
+                Pill { label: "90 min"; onClicked: root.startFocus(90) }
+              }
+              Row {                                  // fully grown: start the next plant, or keep focusing
+                spacing: 6
+                visible: root.bloomed
+                Pill { icon: "sprout"; label: "Plant a new seed"; primary: true; onClicked: { root.plantNew(); root.cardOpen = false } }
+                Pill { icon: "play"; label: "25 min"; onClicked: root.startFocus(25) }
               }
             }
           }
 
-          Meter { label: "Growth"; value: root.progress; detail: Math.floor(root.progress * 100) + "%"; tint: root.accent }
-          Meter { label: "Water"; value: root.water / 100; detail: root.thirst; tint: "#6fbaf0" }
+          VineMeter { g: root; value: root.progress }
+          WaterMeter { g: root; value: root.water / 100; live: card.visible }
 
-          Rectangle { width: parent.width; height: 1; color: root.alpha(Commons.Color.popups.text, 0.08) }
+          Rectangle { width: parent.width; height: 1; color: root.alpha(Commons.Color.popups.text, 0.07) }
 
           // today
           Row {
             width: parent.width
-            spacing: 0
-            Stat { width: parent.width / 3; value: root.hm(root.todayFocus); label: "focused today" }
-            Stat { width: parent.width / 3; value: String(root.todaySessions); label: root.todaySessions === 1 ? "session" : "sessions" }
-            Stat { width: parent.width / 3; value: String(root.todayBreaks); label: root.todayBreaks === 1 ? "break" : "breaks" }
-          }
-          Text {
-            textFormat: Text.PlainText
-            width: parent.width
-            topPadding: -4
-            horizontalAlignment: Text.AlignHCenter
-            text: "Screen time " + root.hm(root.todayActive) + " · longest stretch " + root.hm(root.longestStretch)
-            color: root.alpha(Commons.Color.popups.text, 0.4)
-            font.family: Style.font.family; font.pixelSize: 10
+            spacing: 6
+            Tile { width: (parent.width - 12) / 3; icon: "timer"; value: root.hm(root.todayFocus); label: "focused today" }
+            Tile { width: (parent.width - 12) / 3; icon: "check"; value: String(root.todaySessions); label: root.todaySessions === 1 ? "session" : "sessions" }
+            Tile { width: (parent.width - 12) / 3; icon: "coffee"; value: String(root.todayBreaks); label: root.todayBreaks === 1 ? "break" : "breaks" }
           }
 
-          Text {
-            textFormat: Text.PlainText
-            width: parent.width
-            wrapMode: Text.Wrap
-            lineHeight: 1.15
-            visible: root.bloomed || (root.water < 45 && !root.breakDue)
-            text: root.bloomed ? "Fully grown! Plant a new seed whenever you're ready."
-                  : "Your plant is thirsty. Step away for 5 minutes to water it 💧"
-            color: root.alpha(Commons.Color.popups.text, 0.6)
-            font.family: Style.font.family; font.pixelSize: 11
-          }
-
-          Rectangle {
-            visible: root.bloomed
-            width: newText.implicitWidth + 28; height: 30; radius: 15
-            color: newMouse.containsMouse ? Qt.lighter(root.accent, 1.1) : root.accent
-            Behavior on color { ColorAnimation { duration: 120 } }
-            Text {
-              id: newText
-              textFormat: Text.PlainText
-              anchors.centerIn: parent
-              text: "🌱  Plant a new seed"
-              color: Commons.Color.background
-              font.family: Style.font.family; font.pixelSize: 12; font.bold: true
-            }
-            MouseArea { id: newMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        onClicked: { root.plantNew(); root.cardOpen = false } }
-          }
+          WeekStrip { g: root }
 
           // the shelf
-          Item {
+          Column {
             width: parent.width
-            height: 18
-            Text {
-              textFormat: Text.PlainText
-              anchors.bottom: parent.bottom
-              text: "Your shelf"
-              color: root.alpha(Commons.Color.popups.text, 0.55)
-              font.family: Style.font.family; font.pixelSize: 11; font.bold: true
-            }
-            Text {
-              textFormat: Text.PlainText
-              anchors { right: parent.right; bottom: parent.bottom }
-              text: root.collection.length + (root.collection.length === 1 ? " plant" : " plants")
-              color: root.alpha(Commons.Color.popups.text, 0.4)
-              font.family: Style.font.family; font.pixelSize: 10
-            }
-          }
-          Item {
-            width: parent.width
-            height: 58
-            Text {
-              visible: root.collection.length === 0
-              textFormat: Text.PlainText
-              anchors.centerIn: parent
-              anchors.verticalCenterOffset: -6
-              text: "Your first bloom will sit here 🌱"
-              color: root.alpha(Commons.Color.popups.text, 0.4)
-              font.family: Style.font.family; font.pixelSize: 11
-            }
-            Row {                                   // newest on the right, up to 6
-              anchors.bottom: plank.top
-              anchors.bottomMargin: -3
-              spacing: -4
-              Repeater {
-                model: root.collection.slice(-6)
-                MiniPlant { required property var modelData; entry: modelData }
+            spacing: 4
+            Item {
+              width: parent.width
+              height: 16
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                textFormat: Text.PlainText
+                text: "Your shelf"
+                color: root.alpha(Commons.Color.popups.text, 0.85)
+                font.family: Style.font.family; font.pixelSize: 11; font.bold: true
+              }
+              Text {
+                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                textFormat: Text.PlainText
+                text: root.collection.length + (root.collection.length === 1 ? " plant grown" : " plants grown")
+                color: root.alpha(Commons.Color.popups.text, 0.5)
+                font.family: Style.font.family; font.pixelSize: 10
               }
             }
-            Rectangle {                             // a wooden plank
-              id: plank
-              anchors.bottom: parent.bottom
-              width: parent.width; height: 6; radius: 3
-              gradient: Gradient {
-                GradientStop { position: 0; color: root.alpha(root.mix("#a87b55", root.accent, 0.15), 1) }
-                GradientStop { position: 1; color: root.alpha(root.mix("#6f4c33", root.accent, 0.1), 1) }
+            Item {
+              width: parent.width
+              height: 66
+              Item {                                // empty: a dashed outline of a pot
+                visible: root.collection.length === 0
+                anchors.fill: parent
+                Shape {
+                  x: parent.width / 2 - 13; y: 16
+                  width: 26; height: 30
+                  preferredRendererType: Shape.CurveRenderer
+                  ShapePath {
+                    strokeColor: root.alpha(Commons.Color.popups.text, 0.28); strokeWidth: 1.3; fillColor: "transparent"
+                    strokeStyle: ShapePath.DashLine; dashPattern: [2, 2.5]; joinStyle: ShapePath.RoundJoin
+                    PathSvg { path: "M 1 2 L 25 2 L 25 8 L 1 8 Z M 3 8 L 6 28 L 20 28 L 23 8" }
+                  }
+                }
+                Text {
+                  anchors.horizontalCenter: parent.horizontalCenter
+                  y: 2
+                  textFormat: Text.PlainText
+                  text: "Your first bloom will sit here"
+                  color: root.alpha(Commons.Color.popups.text, 0.4)
+                  font.family: Style.font.family; font.pixelSize: 10
+                }
+              }
+              Row {                                 // newest on the right, up to 6
+                anchors.bottom: plank.top
+                anchors.bottomMargin: -4
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 4
+                Repeater {
+                  model: root.collection.slice(-6)
+                  MiniPlant { required property var modelData; entry: modelData }
+                }
+              }
+              Rectangle {                           // soft shadow under the shelf
+                anchors { horizontalCenter: plank.horizontalCenter; top: plank.bottom; topMargin: -1 }
+                width: plank.width - 10; height: 6; radius: 3
+                color: root.alpha("#000000", 0.28)
+              }
+              Item {                                // the shelf: a top face and a front edge
+                id: plank
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 6
+                width: parent.width; height: 10
+                Rectangle {
+                  width: parent.width; height: 4; radius: 2
+                  color: root.mix("#c39a6e", root.accent, 0.12)
+                }
+                Rectangle {
+                  y: 3; width: parent.width; height: 7; radius: 2
+                  gradient: Gradient {
+                    GradientStop { position: 0; color: root.mix("#8a6243", root.accent, 0.1) }
+                    GradientStop { position: 1; color: root.mix("#5e412c", root.accent, 0.08) }
+                  }
+                }
+                Rectangle { x: 6; y: 4; width: parent.width - 12; height: 1; color: root.alpha("#ffffff", 0.08) }
               }
             }
           }
@@ -769,8 +873,8 @@ Item {
   }
 
   // ---------------------------------------------------------- components
-  // A floating panel styled like Omarchy's popups, with a soft shadow, that
-  // grows out of the plant when shown.
+  // A floating panel styled like Omarchy's popups: a frosted panel tinted by
+  // the theme, a soft shadow, and it grows out of the plant when shown.
   component Popover: Item {
     id: pop
     property bool shown: false
@@ -780,109 +884,96 @@ Item {
     scale: shown ? 1 : 0.92
     transformOrigin: Item.BottomLeft
     Behavior on opacity { NumberAnimation { duration: 160 } }
-    Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutBack } }
+    Behavior on scale { NumberAnimation { duration: 240; easing.type: Easing.OutBack } }
     Rectangle {
       id: panel
       anchors.fill: parent
-      radius: Math.max(12, Style.cornerRadius + 4)
-      color: root.alpha(root.mix(Commons.Color.popups.background, root.accent, 0.03), 1)
+      radius: Math.max(16, Style.cornerRadius + 6)
+      gradient: Gradient {
+        GradientStop { position: 0; color: root.mix(Commons.Color.popups.background, root.accent, 0.08) }
+        GradientStop { position: 1; color: root.mix(Commons.Color.popups.background, root.accent, 0.02) }
+      }
       border.width: 1
-      border.color: root.alpha(Commons.Color.popups.border, 0.45)
+      border.color: root.alpha(root.mix(Commons.Color.popups.border, root.accent, 0.3), 0.45)
       layer.enabled: true
       layer.effect: MultiEffect {
-        shadowEnabled: true; shadowColor: "#000000"; shadowOpacity: 0.35
-        shadowBlur: 0.8; shadowVerticalOffset: 3; autoPaddingEnabled: true
+        shadowEnabled: true; shadowColor: "#000000"; shadowOpacity: 0.4
+        shadowBlur: 0.9; shadowVerticalOffset: 4; autoPaddingEnabled: true
       }
     }
     Item { id: inner; anchors.fill: parent }
   }
 
-  // A rounded button.
+  // A rounded button, with an optional icon. Every button is 28 px tall.
   component Pill: Rectangle {
     id: pill
     property string label
+    property string icon
     property bool primary: false
     signal clicked()
-    width: pillLabel.implicitWidth + 24
+    width: pillRow.implicitWidth + 26
     height: 28
     radius: 14
     color: primary ? (pillMouse.containsMouse ? Qt.lighter(root.accent, 1.1) : root.accent)
-                   : (pillMouse.containsMouse ? root.alpha(Commons.Color.popups.text, 0.14) : root.alpha(Commons.Color.popups.text, 0.07))
+                   : (pillMouse.containsMouse ? root.alpha(Commons.Color.popups.text, 0.14) : root.alpha(Commons.Color.popups.text, 0.06))
+    border.width: 1
+    border.color: primary ? root.accent : root.alpha(Commons.Color.popups.text, 0.1)
     Behavior on color { ColorAnimation { duration: 120 } }
-    scale: pillMouse.pressed ? 0.96 : 1
+    scale: pillMouse.pressed ? 0.95 : 1
     Behavior on scale { NumberAnimation { duration: 90 } }
-    Text {
-      id: pillLabel
-      textFormat: Text.PlainText
+    Row {
+      id: pillRow
       anchors.centerIn: parent
-      text: pill.label
-      color: pill.primary ? Commons.Color.background : Commons.Color.popups.text
-      font.family: Style.font.family; font.pixelSize: 12; font.bold: pill.primary
+      spacing: 6
+      Icon {
+        visible: pill.icon !== ""
+        anchors.verticalCenter: parent.verticalCenter
+        name: pill.icon
+        size: 12
+        stroke: 2.4
+        color: pillLabel.color
+      }
+      Text {
+        id: pillLabel
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: pill.label
+        color: pill.primary ? Commons.Color.background : Commons.Color.popups.text
+        font.family: Style.font.family; font.pixelSize: 12; font.bold: pill.primary
+      }
     }
     MouseArea { id: pillMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: pill.clicked() }
   }
 
-  // Label + rounded bar + detail on the right.
-  component Meter: Column {
-    id: meter
-    property string label
-    property string detail
-    property real value
-    property color tint
-    width: parent ? parent.width : 200
-    spacing: 4
-    Item {
-      width: meter.width; height: 14
-      Text {
-        textFormat: Text.PlainText
-        text: meter.label
-        color: root.alpha(Commons.Color.popups.text, 0.75)
-        font.family: Style.font.family; font.pixelSize: 11
-      }
-      Text {
-        textFormat: Text.PlainText
-        anchors.right: parent.right
-        text: meter.detail
-        color: root.alpha(Commons.Color.popups.text, 0.5)
-        font.family: Style.font.family; font.pixelSize: 10
-      }
-    }
-    Rectangle {
-      width: meter.width; height: 7; radius: 3.5
-      color: root.alpha(Commons.Color.popups.text, 0.09)
-      Rectangle {
-        width: Math.max(height, parent.width * Math.max(0, Math.min(1, meter.value)))
-        height: parent.height; radius: 3.5
-        visible: meter.value > 0.005
-        gradient: Gradient {
-          orientation: Gradient.Horizontal
-          GradientStop { position: 0; color: Qt.darker(meter.tint, 1.12) }
-          GradientStop { position: 1; color: Qt.lighter(meter.tint, 1.15) }
-        }
-        Behavior on width { NumberAnimation { duration: 500; easing.type: Easing.OutCubic } }
-      }
-    }
-  }
-
-  // A number with a small caption under it.
-  component Stat: Column {
-    id: stat
+  // One of today's numbers: an icon and the value, a caption under them.
+  component Tile: Rectangle {
+    id: tile
+    property string icon
     property string value
     property string label
-    spacing: 1
-    Text {
-      textFormat: Text.PlainText
-      width: stat.width
-      horizontalAlignment: Text.AlignHCenter
-      text: stat.value
-      color: Commons.Color.popups.text
-      font.family: Style.font.family; font.pixelSize: 13; font.bold: true
+    height: 46
+    radius: 12
+    color: root.alpha(Commons.Color.popups.text, 0.045)
+    border.width: 1
+    border.color: root.alpha(Commons.Color.popups.text, 0.07)
+    Row {
+      x: 10; y: 8
+      spacing: 6
+      Icon { anchors.verticalCenter: parent.verticalCenter; name: tile.icon; size: 13; color: root.accent }
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        textFormat: Text.PlainText
+        text: tile.value
+        color: Commons.Color.popups.text
+        font.family: Style.font.family; font.pixelSize: 14; font.bold: true
+      }
     }
     Text {
+      x: 10; y: 28
+      width: tile.width - 14
+      elide: Text.ElideRight
       textFormat: Text.PlainText
-      width: stat.width
-      horizontalAlignment: Text.AlignHCenter
-      text: stat.label
+      text: tile.label
       color: root.alpha(Commons.Color.popups.text, 0.45)
       font.family: Style.font.family; font.pixelSize: 9
     }
@@ -952,6 +1043,12 @@ Item {
       root.focusEndsAt = root.focusStartedAt + len
       return root.focusLeft
     }
+    // Screenshots: show the terrarium's sky at `hour` (like 21.5); `sky now` goes back to the clock.
+    function sky(hour: string): string {
+      var h = Number(hour)
+      root.previewHour = hour === "now" || isNaN(h) ? -1 : Math.max(0, Math.min(23.99, h))
+      return root.previewHour < 0 ? "now" : "sky at " + root.previewHour
+    }
     function sparkle(): string { sparkles.burst(30); return "ok" }
     function hush(): string { root.tip = ""; return "ok" }
     // Sample data for screenshots (undo with `reset`).
@@ -961,6 +1058,9 @@ Item {
                          { species: "fern", seed: 5, bloomedOn: "2026-10-27", days: 8 }]
       root.statsDay = root.today(); root.todayFocus = 100; root.todaySessions = 4; root.todayBreaks = 3
       root.todayActive = 212; root.longestStretch = 55
+      var h = {}, mins = [45, 0, 120, 75, 30, 95]
+      for (var i = 0; i < 6; i++) h[Qt.formatDate(new Date(Date.now() - (6 - i) * 86400000), "yyyy-MM-dd")] = mins[i]
+      root.history = h
       root.plantNew("sunflower"); root.setGrowthPercent(64); root.water = 88
       root.startFocus(25); root.focusStartedAt = Date.now() - 10 * 60000; root.focusEndsAt = root.focusStartedAt + 25 * 60000
       root.tip = ""; root.repaint(); return info()
@@ -968,7 +1068,7 @@ Item {
     // Start over: empty shelf, a fresh daisy seed.
     function reset(): string {
       if (root.focusing) root.focusEndsAt = 0
-      root.breakDue = false; root.collection = []; root.water = 100; root.totalFocus = 0; root.activeMinutes = 0
+      root.breakDue = false; root.collection = []; root.water = 100; root.totalFocus = 0; root.activeMinutes = 0; root.history = ({})
       root.statsDay = ""; root.newDay()
       root.plantNew("daisy"); return info()
     }

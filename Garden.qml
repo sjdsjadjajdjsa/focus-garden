@@ -944,6 +944,16 @@ Item {
     function finish(): string { if (root.focusing) root.finishFocus(); return "done" }
     function bloom(): string { root.setGrowthPercent(100); root.celebrate(); return info() }
     function card(state: string): string { root.cardOpen = state !== "close"; return root.cardOpen ? "open" : "closed" }
+    // Screenshots: put the sun at `pct` percent of a 25-minute session; sparkle on demand.
+    function sun(pct: string): string {
+      var len = 25 * 60000
+      root.now = Date.now()
+      root.focusStartedAt = root.now - Math.max(0, Math.min(99.9, Number(pct) || 0)) / 100 * len
+      root.focusEndsAt = root.focusStartedAt + len
+      return root.focusLeft
+    }
+    function sparkle(): string { sparkles.burst(30); return "ok" }
+    function hush(): string { root.tip = ""; return "ok" }
     // Sample data for screenshots (undo with `reset`).
     function demo(): string {
       root.collection = [{ species: "daisy", seed: 11, bloomedOn: "2026-10-12", days: 6 },

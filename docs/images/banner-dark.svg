@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-label="Focus Garden: grow a little plant while you focus">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a201d"/><stop offset="1" stop-color="#140f0d"/></linearGradient>
+    <radialGradient id="ground" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#f38d70" stop-opacity="0.28"/><stop offset="1" stop-color="#f38d70" stop-opacity="0"/></radialGradient>
+    <radialGradient id="sunglow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#ffc94d" stop-opacity="0.55"/><stop offset="1" stop-color="#ffc94d" stop-opacity="0"/></radialGradient>
+    <radialGradient id="sun" cx="0.35" cy="0.35" r="0.7"><stop offset="0" stop-color="#fff1c2"/><stop offset="1" stop-color="#f6b94a"/></radialGradient>
+    <linearGradient id="pot" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e9a48c"/><stop offset="0.4" stop-color="#d98f76"/><stop offset="1" stop-color="#9d5d4a"/></linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2b9a2"/><stop offset="1" stop-color="#cf8670"/></linearGradient>
+    <linearGradient id="leafL" x1="1" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#3f8a45"/><stop offset="0.6" stop-color="#5fb35a"/><stop offset="1" stop-color="#8fd27d"/></linearGradient>
+    <linearGradient id="leafR" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#357a3c"/><stop offset="0.6" stop-color="#54a650"/><stop offset="1" stop-color="#82c672"/></linearGradient>
+    <linearGradient id="petal" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#d9694c"/><stop offset="0.6" stop-color="#f38d70"/><stop offset="1" stop-color="#fdc9b5"/></linearGradient>
+    <linearGradient id="petalBack" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#b85a42"/><stop offset="1" stop-color="#e8846a"/></linearGradient>
+    <clipPath id="r"><rect width="1280" height="320" rx="24"/></clipPath>
+  </defs>
+  <g clip-path="url(#r)">
+    <rect width="1280" height="320" fill="url(#bg)"/>
+    <circle cx="90" cy="60" r="1.2" fill="#f6e3d3" opacity="0.50"><animate attributeName="opacity" values="0.50;0.15;0.50" dur="3s" begin="0.00s" repeatCount="indefinite"/></circle><circle cx="210" cy="250" r="1" fill="#f6e3d3" opacity="0.35"><animate attributeName="opacity" values="0.35;0.10;0.35" dur="4s" begin="0.37s" repeatCount="indefinite"/></circle><circle cx="330" cy="40" r="1.4" fill="#f6e3d3" opacity="0.45"><animate attributeName="opacity" values="0.45;0.14;0.45" dur="5s" begin="0.74s" repeatCount="indefinite"/></circle><circle cx="560" cy="290" r="1" fill="#f6e3d3" opacity="0.30"><animate attributeName="opacity" values="0.30;0.09;0.30" dur="6s" begin="1.11s" repeatCount="indefinite"/></circle><circle cx="1180" cy="70" r="1.3" fill="#f6e3d3" opacity="0.50"><animate attributeName="opacity" values="0.50;0.15;0.50" dur="3s" begin="1.48s" repeatCount="indefinite"/></circle><circle cx="1060" cy="250" r="1" fill="#f6e3d3" opacity="0.35"><animate attributeName="opacity" values="0.35;0.10;0.35" dur="4s" begin="1.85s" repeatCount="indefinite"/></circle><circle cx="980" cy="40" r="1.1" fill="#f6e3d3" opacity="0.40"><animate attributeName="opacity" values="0.40;0.12;0.40" dur="5s" begin="2.22s" repeatCount="indefinite"/></circle><circle cx="1230" cy="220" r="1.4" fill="#f6e3d3" opacity="0.45"><animate attributeName="opacity" values="0.45;0.14;0.45" dur="6s" begin="2.59s" repeatCount="indefinite"/></circle><circle cx="700" cy="30" r="1" fill="#f6e3d3" opacity="0.30"><animate attributeName="opacity" values="0.30;0.09;0.30" dur="3s" begin="2.96s" repeatCount="indefinite"/></circle><circle cx="640" cy="280" r="1.2" fill="#f6e3d3" opacity="0.35"><animate attributeName="opacity" values="0.35;0.10;0.35" dur="4s" begin="3.33s" repeatCount="indefinite"/></circle><circle cx="150" cy="150" r="1" fill="#f6e3d3" opacity="0.30"><animate attributeName="opacity" values="0.30;0.09;0.30" dur="5s" begin="3.70s" repeatCount="indefinite"/></circle><circle cx="1120" cy="160" r="1" fill="#f6e3d3" opacity="0.30"><animate attributeName="opacity" values="0.30;0.09;0.30" dur="6s" begin="4.07s" repeatCount="indefinite"/></circle><circle cx="860" cy="290" r="1.2" fill="#f6e3d3" opacity="0.35"><animate attributeName="opacity" values="0.35;0.10;0.35" dur="3s" begin="4.44s" repeatCount="indefinite"/></circle>
+    <ellipse cx="400" cy="300" rx="190" ry="34" fill="url(#ground)"/>
+    <!-- the sun's path, and the sun crossing it -->
+    <path id="arc" d="M240,232 A160,160 0 0 1 560,232" fill="none" stroke="#f38d70" stroke-opacity="0.45" stroke-width="2" stroke-dasharray="2 7" stroke-linecap="round"/>
+    <g transform="translate(240.0 232.0)">
+      <circle r="26" fill="url(#sunglow)"/>
+      <circle r="10" fill="url(#sun)" stroke="#ffffff" stroke-opacity="0.5" stroke-width="1.2"/>
+      <animateTransform attributeName="transform" type="translate" dur="9s" repeatCount="indefinite" values="240.0 232.0;241.4 211.1;245.5 190.6;252.2 170.8;261.4 152.0;273.1 134.6;286.9 118.9;302.6 105.1;320.0 93.4;338.8 84.2;358.6 77.5;379.1 73.4;400.0 72.0;420.9 73.4;441.4 77.5;461.2 84.2;480.0 93.4;497.4 105.1;513.1 118.9;526.9 134.6;538.6 152.0;547.8 170.8;554.5 190.6;558.6 211.1;560.0 232.0;560.0 232.0" keyTimes="0.0000;0.0354;0.0708;0.1062;0.1417;0.1771;0.2125;0.2479;0.2833;0.3187;0.3542;0.3896;0.4250;0.4604;0.4958;0.5312;0.5667;0.6021;0.6375;0.6729;0.7083;0.7437;0.7792;0.8146;0.8500;1"/>
+    </g>
+    <!-- pot -->
+    <ellipse cx="400" cy="303" rx="62" ry="7" fill="#000000" opacity="0.35"/>
+    <path d="M346,240 L454,240 L444,296 Q443,302 436,302 L364,302 Q357,302 356,296 Z" fill="url(#pot)"/>
+    <rect x="348" y="256" width="104" height="4" fill="#f8c2ad" opacity="0.85"/>
+    <rect x="338" y="224" width="124" height="18" rx="5" fill="url(#rim)"/>
+    <line x1="344" y1="227" x2="456" y2="227" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1.5"/>
+    <ellipse cx="400" cy="224" rx="56" ry="6" fill="#4a3526"/>
+    <!-- tulip, swaying -->
+    <g>
+      <animateTransform attributeName="transform" type="rotate" values="-1.6 400 224;1.6 400 224;-1.6 400 224" dur="5.5s" repeatCount="indefinite"/>
+      <path d="M398,224 C368,212 348,182 346,140 C364,164 386,192 398,224 Z" fill="url(#leafL)"/>
+      <path d="M402,224 C430,210 450,188 456,150 C438,174 416,198 402,224 Z" fill="url(#leafR)"/>
+      <path d="M400,224 Q396,166 404,106" fill="none" stroke="#3f8a45" stroke-width="5" stroke-linecap="round"/>
+      <path d="M399,222 Q395,166 403,108" fill="none" stroke="#8fd27d" stroke-opacity="0.7" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M404,110 C388,108 376,92 380,64 C392,72 402,88 404,110 Z" fill="url(#petalBack)"/>
+      <path d="M404,110 C420,108 432,92 428,64 C416,72 406,88 404,110 Z" fill="url(#petalBack)"/>
+      <path d="M404,112 C388,104 386,78 404,56 C422,78 420,104 404,112 Z" fill="url(#petal)"/>
+      <path d="M404,104 Q406,84 404,66" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="1.4" stroke-linecap="round"/>
+    </g>
+    <text x="620" y="166" font-family="ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace" font-size="78" font-weight="700" fill="#f4e9e1" letter-spacing="-2">focus garden</text>
+    <text x="624" y="212" font-family="ui-monospace, 'JetBrains Mono', SFMono-Regular, Menlo, monospace" font-size="22" fill="#b8a297">grow a little plant while you focus</text>
+  </g>
+</svg>

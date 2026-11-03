@@ -4,6 +4,8 @@
 
 A new card.
 
+- The icons' license notices (Lucide's ISC license, and the MIT license for
+  the icons derived from Feather) now ship with the plugin in `LICENSE-lucide`.
 - A terrarium at the top: your plant under glass, on a little grassy hill,
   under a sky that follows the time of day (dawn, blue day, golden hour,
   dusk, and a starry night with fireflies). During a focus session the sun

@@ -145,4 +145,5 @@ omarchy-shell garden sky 21.5             # preview the terrarium's sky at 9:30 
 ## License
 
 [MIT](LICENSE). The icons in `Icon.qml` are from [Lucide](https://lucide.dev)
-(ISC license, © Lucide Contributors).
+(ISC license; a few derived from Feather, MIT license). Their notices are in
+[LICENSE-lucide](LICENSE-lucide).

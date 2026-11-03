@@ -2,7 +2,9 @@ import QtQuick
 import QtQuick.Shapes
 
 // A crisp line icon, drawn from 24×24 paths so every icon shares the same
-// box, stroke and optical center. Paths from Lucide (lucide.dev, ISC license).
+// box, stroke and optical center. Paths from Lucide (lucide.dev): ISC license,
+// with the icons derived from Feather (the stop square) under the MIT license.
+// Both notices are in LICENSE-lucide.
 Item {
   id: icon
   property string name

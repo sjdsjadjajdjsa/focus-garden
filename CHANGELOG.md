@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.1
+
+A few small fixes.
+
+- The hover tip now goes away shortly after the mouse leaves the plant,
+  instead of lingering for ten minutes.
+- Starting a focus session while one is already running (for example
+  `garden focus 50` from a keybind) now counts the time you already focused
+  before starting the new session, instead of losing it.
+- "Day N" in the terrarium now updates when midnight passes, without needing
+  to reopen the card.
+
 ## 0.2.0
 
 A new card.

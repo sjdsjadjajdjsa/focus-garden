@@ -100,6 +100,7 @@ Item {
   function today() { return Qt.formatDate(new Date(), "yyyy-MM-dd") }
   function newSeed() { return Math.floor(Math.random() * 2147483647) }
   function dayNum() {
+    void clock                                // re-evaluate bindings every minute (midnight rollover)
     return plantedOn === "" ? 1 : Math.max(1, Math.floor((Date.now() - new Date(plantedOn + "T00:00:00").getTime()) / 86400000) + 1)
   }
   function hm(mins) {
@@ -242,6 +243,7 @@ Item {
   // for a break, with a small idea for what to do with it.
   function startFocus(minutes) {
     minutes = Math.max(1, Math.min(180, Math.round(Number(minutes) || 25)))
+    stopFocus()                               // credit a running session before replacing it
     newDay()
     now = Date.now()
     focusStartedAt = now
@@ -541,7 +543,7 @@ Item {
           hoverEnabled: true
           cursorShape: Qt.PointingHandCursor
           onEntered: if (!root.cardOpen) root.showTip(root.statusTip, 600000)
-          onExited: tipTimer.restart()
+          onExited: { tipTimer.interval = 400; tipTimer.restart() }
           onClicked: { root.cardOpen = !root.cardOpen; root.tip = "" }
         }
 
